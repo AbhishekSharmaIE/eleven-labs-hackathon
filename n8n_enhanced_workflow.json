@@ -1,0 +1,152 @@
+{
+  "name": "Enhanced Interview Analysis Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "interview-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "interview-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced interview data processing\nconst data = $input.item.json;\n\n// Extract transcript from various formats\nlet transcript = '';\nif (data.transcript) {\n  if (typeof data.transcript === 'string') {\n    transcript = data.transcript;\n  } else if (Array.isArray(data.transcript)) {\n    transcript = data.transcript.map(seg => seg.text || seg || '').join(' ');\n  }\n}\n\n// Extract all metadata\nconst processed = {\n  interview_id: data.id || data.bot_id || `interview_${Date.now()}`,\n  bot_id: data.bot_id || data.id,\n  meeting_url: data.meeting_url || data.meeting?.url,\n  timestamp: data.timestamp || new Date().toISOString(),\n  transcript: transcript,\n  transcript_length: transcript.length,\n  word_count: transcript.split(/\\s+/).filter(w => w.length > 0).length,\n  duration: data.duration || data.audio_duration || data.recording_duration,\n  analysis: data.analysis || {},\n  raw_data: data\n};\n\n// Calculate additional metrics\nif (transcript) {\n  const text = transcript.toLowerCase();\n  processed.metrics = {\n    technical_keywords: (text.match(/\\b(code|programming|algorithm|software|development|python|javascript|java|api|database|system|architecture|framework|git|deployment|testing|debugging)\\b/g) || []).length,\n    question_count: (transcript.match(/\\?/g) || []).length,\n    sentence_count: (transcript.match(/[.!?]+/g) || []).length\n  };\n}\n\nreturn processed;"
+      },
+      "id": "process",
+      "name": "Process & Enrich Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-transcript",
+              "leftValue": "={{ $json.transcript_length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check",
+      "name": "Has Transcript?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/webhook/n8n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "send-api",
+      "name": "Send to API Server",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced analysis with additional insights\nconst data = $input.item.json;\nconst transcript = data.transcript || '';\n\n// Advanced sentiment analysis\nconst positiveWords = ['excellent', 'great', 'success', 'achieved', 'improved', 'solved', 'optimized'];\nconst negativeWords = ['difficult', 'challenge', 'problem', 'issue', 'failed', 'struggled'];\n\nconst text = transcript.toLowerCase();\nconst sentiment = {\n  positive: positiveWords.filter(w => text.includes(w)).length,\n  negative: negativeWords.filter(w => text.includes(w)).length\n};\n\n// Extract key topics\nconst topics = [];\nif (text.includes('python') || text.includes('javascript') || text.includes('java')) topics.push('Programming Languages');\nif (text.includes('react') || text.includes('django') || text.includes('spring')) topics.push('Frameworks');\nif (text.includes('database') || text.includes('sql') || text.includes('mongodb')) topics.push('Databases');\nif (text.includes('api') || text.includes('rest') || text.includes('graphql')) topics.push('APIs');\nif (text.includes('cloud') || text.includes('aws') || text.includes('docker')) topics.push('Cloud/DevOps');\n\n// Enhanced response\nreturn {\n  ...data,\n  enhanced_analysis: {\n    sentiment_score: sentiment.positive - sentiment.negative,\n    topics_discussed: [...new Set(topics)],\n    engagement_level: data.word_count > 500 ? 'high' : data.word_count > 200 ? 'medium' : 'low',\n    processed_at: new Date().toISOString(),\n    processing_source: 'n8n-backend'\n  }\n};"
+      },
+      "id": "enhance",
+      "name": "Enhanced Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/webhook/n8n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "save-enhanced",
+      "name": "Save Enhanced Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"success\", \"message\": \"Interview processed by n8n backend\", \"interview_id\": $json.interview_id } }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"skipped\", \"message\": \"No transcript data available\" } }}"
+      },
+      "id": "respond-skip",
+      "name": "Respond (No Data)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Process & Enrich Data", "type": "main", "index": 0}]]
+    },
+    "Process & Enrich Data": {
+      "main": [[{"node": "Has Transcript?", "type": "main", "index": 0}]]
+    },
+    "Has Transcript?": {
+      "main": [
+        [{"node": "Send to API Server", "type": "main", "index": 0}],
+        [{"node": "Respond (No Data)", "type": "main", "index": 0}]
+      ]
+    },
+    "Send to API Server": {
+      "main": [[{"node": "Enhanced Analysis", "type": "main", "index": 0}]]
+    },
+    "Enhanced Analysis": {
+      "main": [[{"node": "Save Enhanced Data", "type": "main", "index": 0}]]
+    },
+    "Save Enhanced Data": {
+      "main": [[{"node": "Respond", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-12-11T00:00:00.000Z",
+  "versionId": "1"
+}
+
+
