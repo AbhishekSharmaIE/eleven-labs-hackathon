@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+config.local.py
+*.key
+*.pem
+secrets/
+
+# API Keys and tokens
+*_api_key.txt
+*_token.txt
+*.secret
+
+# Data files
+interviews_data.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+/tmp/
+/tmp/*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Ngrok
+ngrok.yml
+.ngrok/
+
+# Node
+node_modules/
+npm-debug.log
+
+# n8n
+.n8n/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Backup files
+*.bak
+*.backup
+*~
+
